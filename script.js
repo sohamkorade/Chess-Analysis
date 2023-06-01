@@ -1,55 +1,34 @@
-var thepgn = `[Event "Rated Blitz game"]
-[Site "https://lichess.org/HaUeZaAV"]
-[Date "2020.08.21"]
-[White "SohamKorade"]
-[Black "gambithero"]
-[Result "1/2-1/2"]
-[UTCDate "2020.08.21"]
-[UTCTime "16:17:22"]
-[WhiteElo "1497"]
-[BlackElo "1472"]
-[WhiteRatingDiff "-1"]
-[BlackRatingDiff "+1"]
+var thepgn = `[Event "Rated Bullet game"]
+[Site "https://lichess.org/stc1FR7C"]
+[Date "2023.06.01"]
+[White "MrAnd3rs0n"]
+[Black "sohamkorade"]
+[Result "1-0"]
+[UTCDate "2023.06.01"]
+[UTCTime "16:26:46"]
+[WhiteElo "1580"]
+[BlackElo "1542"]
+[WhiteRatingDiff "+5"]
+[BlackRatingDiff "-11"]
 [Variant "Standard"]
-[TimeControl "180+2"]
-[ECO "A45"]
-[Opening "Indian Game"]
+[TimeControl "120+1"]
+[ECO "A40"]
+[Opening "Queen's Pawn Game"]
 [Termination "Normal"]
 [Annotator "lichess.org"]
-    
-1. d4 Nf6 { A45 Indian Game } 2. Bf4 d6?! { (-0.09 → 0.43) Inaccuracy. e6 was best. } (2... e6 3. c4 d5 4. e3 c5 5. Nc3 cxd4 6. exd4 Nc6 7. c5) 3. e3 c6 4. Nf3 g5?? { (0.01 → 2.33) Blunder. Nh5 was best. } (4... Nh5 5. Nbd2 Nd7 6. Bd3 Nxf4 7. exf4 g6 8. O-O Bg7 9. Re1) 5. Bxg5 Bg4 6. h3?? { (2.60 → -2.69) Blunder. Bxf6 was best. } (6. Bxf6 exf6 7. Nbd2 Nd7 8. a4 Rg8 9. Bd3 Be6 10. O-O Bh3 11. Ne1 Bg4 12. Qc1 d5) 6... Bxf3 7. Qxf3 Qa5+ 8. Nc3 Qxg5 9. Bd3 Rg8 10. Rg1 Nbd7 11. O-O-O O-O-O 12. Kb1 Kb8 13. Ne4 Nxe4 14. Bxe4 Nf6 15. Bxc6? { (-3.18 → -6.19) Mistake. Bd3 was best. } (15. Bd3 d5) 15... bxc6 16. Qxc6 Rc8 17. Qa6 Qd5 18. Rd3 Rc6 19. Rb3+ Rb6 20. Rxb6+ axb6 21. Qxb6+ Qb7?! { (-5.04 → -3.38) Inaccuracy. Kc8 was best. } (21... Kc8 22. g4 e6 23. Qa6+ Kd7 24. c4 Qe4+ 25. Ka1 Ke7 26. c5 dxc5 27. dxc5 Nd5 28. Rc1) 22. Qd8+ Ka7 23. Qa5+ Qa6 24. Qc7+ Qb7 25. Qa5+ Kb8 26. Qd8+ Qc8 27. Qb6+ Qb7?? { (-3.43 → 0.00) Blunder. Ka8 was best. } (27... Ka8 28. g4 Qb7 29. Qa5+ Qa7 30. Qb5 Qd7 31. Qa5+ Kb8 32. g5 Qc7 33. Qf5 h6 34. h4) 28. Qd8+ Qc8 29. Qb6+ Qb7?? { (-3.36 → 0.00) Blunder. Ka8 was best. } (29... Ka8 30. g4 Qb7 31. Qa5+ Qa7 32. Qb5 Qd7 33. Qa5+ Kb8 34. g5 Qc7 35. Qf5 Qb7 36. h4) 30. Qd8+ Qc8 { The game is a draw. } 1/2-1/2`
+
+1. d4 { A40 Queen's Pawn Game } c6 2. Nf3 d5 3. Bf4 Bf5 4. e3 e6 5. Bd3 Bg6 6. Ne5 Nd7 7. Nxg6 hxg6 8. Nd2 Ndf6 9. Nf3 Bd6 10. Ne5 Ne4 11. f3 Bxe5 12. dxe5 Nc5 13. Be2 Ne7 14. Qd4 Qb6 15. e4 O-O-O 16. Be3 Nd7 17. Qc3 Rh7 18. Bxb6 Nxb6 19. O-O-O g5 20. exd5 Nexd5 21. Qc5 Nf4 22. Rxd8+ Kxd8 23. Qf8+ Kc7 24. Qxf7+ Nd7 25. Bd3 Nxd3+ 26. cxd3 Rh8 27. Qxg7 Rd8 28. Rd1 Kb6 29. Qxg5 Nc5 30. Qxd8+ Ka6 { Black resigns. } 1-0`
 
 //==================================================
-var pgnData = []
-
-fetch("MagnusCarlsen.pgn").then(e => e.text()).then(e => {
-    pgnData = e.split("\n\n\n").map(g => g.split("\n"))
-    //load the first game
-    loadGame(0);
-})
-
 var game;
 var board;
 
 /// We can load Stockfish via Web Workers or via STOCKFISH() if loaded from a <script> tag.
 var engine = typeof STOCKFISH === "function" ? STOCKFISH() : new Worker('stockfish.js');
-var evaler = typeof STOCKFISH === "function" ? STOCKFISH() : new Worker('stockfish.js');
 var engineStatus = {};
 var displayScore = false;
 var playerColor = 'white';
 var isEngineRunning = false;
-var evaluation_el;
-var announced_game_over;
-// do not pick up pieces if the game is over
-// only pick up pieces for White
-var onDragStart = function (source, piece, position, orientation) {
-    // var re = playerColor == 'white' ? /^b/ : /^w/
-    // if (game.game_over() ||
-    //     piece.search(re) !== -1) {
-    //     return false;
-    // }
-    // return !game.game_over()
-};
 
 function uciCmd(cmd, which) {
     console.log("UCI: " + cmd);
@@ -66,17 +45,24 @@ function displayStatus() {
     } else {
         status += 'ready.';
     }
-
+    let score = engineStatus.score
     if (engineStatus.search) {
-        status += '<br>' + engineStatus.search;
-        if (engineStatus.score && displayScore) {
-            status += (engineStatus.score.substr(0, 4) === "Mate" ? " " : ' Score: ') + engineStatus.score;
+        status += engineStatus.search;
+        if (score && displayScore) {
+            status += (score.substr(0, 4) === "Mate" ? " " : ' Score: ') + score;
         }
     }
-    $('#engineStatus').html(status);
-    $("#eval").text(engineStatus.score)
-    if (engineStatus.score != undefined) {
-        $("#eval1").val(engineStatus.score)
+    $('#engineStatus').text(status);
+    if (score != undefined) {
+        let sign = score > 0 ? "+" : "-"
+        if (score[0] == "#") {
+            $("#eval").text(score)
+        } else {
+            $("#eval").text(sign + Math.abs(score))
+        }
+        let bar = calc_bar(score) + 50
+        $("#evalbarW").height(bar + "%")
+        $("#evalbarB").height((100 - bar) + "%")
     }
 }
 
@@ -99,39 +85,13 @@ function prepareMove() {
     clearAnnotation()
     var turn = game.turn() == 'w' ? 'white' : 'black';
     uciCmd('stop')
-    uciCmd('stop', evaler)
     if (optionShowMoveArrows) {
         uciCmd('position startpos moves' + get_moves());
-        uciCmd('position startpos moves' + get_moves(), evaler);
-        evaluation_el.textContent = "";
-        uciCmd("eval", evaler);
 
         // uciCmd("go infinite");
         uciCmd("go movetime 1000");
         isEngineRunning = true;
     }
-}
-
-evaler.onmessage = function (event) {
-    var line;
-
-    if (event && typeof event === "object") {
-        line = event.data;
-    } else {
-        line = event;
-    }
-
-    // console.log("evaler: " + line);
-
-    /// Ignore some output.
-    if (line === "uciok" || line === "readyok" || line.substr(0, 11) === "option name") {
-        return;
-    }
-
-    if (evaluation_el.textContent) {
-        evaluation_el.textContent += "\n";
-    }
-    evaluation_el.textContent += line;
 }
 
 engine.onmessage = function (event) {
@@ -171,10 +131,12 @@ engine.onmessage = function (event) {
             if (match[1] == 'cp') {
                 engineStatus.score = (score / 100.0).toFixed(2);
                 evalres = engineStatus.score
+                evaltype = "cp"
                 /// Did it find a mate?
             } else if (match[1] == 'mate') {
-                engineStatus.score = 'Mate in ' + Math.abs(score);
+                engineStatus.score = '#' + Math.abs(score);
                 evalres = 10 * (game.turn() == 'w' ? 1 : -1)
+                evaltype = "mate"
             }
 
             /// Is the score bounded?
@@ -186,37 +148,17 @@ engine.onmessage = function (event) {
     displayStatus();
 };
 
-var onDrop = function (source, target) {
-    // see if the move is legal
-    var move = game.move({
-        from: source,
-        to: target,
-        promotion: 'q'
-    });
-    // illegal move
-    if (move === null) {
-        return 'snapback';
-        clearAnnotation()
-    }
-    prepareMove();
-    if (wasmouserightbuttondown) {
-        addArrowAnnotation(source, target)
-        wasmouserightbuttondown = false
+function calc_bar(x) {
+    if (evaltype == "mate") return 50
+    if (x === 0) {
+        return 0;
+    } else if (x < 7) {
+        return -(0.322495 * Math.pow(x, 2)) + 7.26599 * x + 4.11834;
+    } else {
+        return (8 * x) / 145 + 5881 / 145;
     }
 };
 
-var onMouseoutSquare = function (source, piece, position, orientation) {
-    if (mouserightbuttondown) {
-        if (beginarrow == "") {
-            beginarrow = source
-            // console.log("begin:", beginarrow)
-        }
-    } else if (beginarrow != "") {
-        // console.log("end:", source)
-        addArrowAnnotation(beginarrow, source)
-        beginarrow = ""
-    }
-}
 
 //soham edits
 var $board = $('#board')
@@ -241,27 +183,60 @@ function HighlightMove(move = null, eval) {
     }
 }
 
-// update the board position after the piece snap
-// for castling, en passant, pawn promotion
-var onSnapEnd = function () {
-    board.position(game.fen());
-};
-
 var cfg = {
     showErrors: true,
     draggable: true,
     position: 'start',
-    onDragStart: onDragStart,
-    onDrop: onDrop,
-    onSnapEnd: onSnapEnd,
-    onChange: onChange,
+    onDragStart: function (source, piece, position, orientation) {
+        var re = playerColor == 'white' ? /^b/ : /^w/
+        // do not pick up pieces if the game is over
+        // only pick up pieces for current player
+        clearAnnotation()
+        if (piece.search(re) !== -1) return false;
+        return !game.game_over()
+    },
+    onDrop: function (source, target) {
+        // see if the move is legal
+        var move = game.move({
+            from: source,
+            to: target,
+            promotion: 'q'
+        });
+        // illegal move
+        if (move === null) {
+            return 'snapback';
+            clearAnnotation()
+        }
+        prepareMove();
+        if (wasmouserightbuttondown) {
+            addArrowAnnotation(source, target)
+            wasmouserightbuttondown = false
+        }
+    },
+    // update the board position after the piece snap
+    // for castling, en passant, pawn promotion
+    onSnapEnd: function () {
+        board.position(game.fen());
+    },
+    onChange: function () { //fires when the board position changes
+        //highlight the current move
+        $("[id^='gameMove']").removeClass('highlight');
+        $('#gameMove' + currentPly).addClass('highlight');
+        clearAnnotation()
+    },
     // onMouseoverSquare: onMouseoverSquare,
-    onMouseoutSquare: onMouseoutSquare
-};
-
-
-function loadPgn(pgn) {
-    game.load_pgn(pgn)
+    onMouseoutSquare: function (source, piece, position, orientation) {
+        if (mouserightbuttondown) {
+            if (beginarrow == "") {
+                beginarrow = source
+                // console.log("begin:", beginarrow)
+            }
+        } else if (beginarrow != "") {
+            // console.log("end:", source)
+            addArrowAnnotation(beginarrow, source)
+            beginarrow = ""
+        }
+    }
 };
 
 function setDisplayScore(flag) {
@@ -273,7 +248,7 @@ function setDisplayScore(flag) {
 
 
 //Write the game to the DOM
-function writeGameText(g) {
+function writeGameText2(g) {
 
     //remove the header to get the moves
     var h = g.header();
@@ -301,6 +276,24 @@ function writeGameText(g) {
     }
     $("#game-data").html(gameHeaderText + '<div class="gameMoves">' + moveArray.join(' ') + ' <span class="gameResult">' + h.Result + '</span></div>');
 
+}
+
+function writeGameText(g) {
+    let h = g.header()
+    h = JSON.stringify(h, null, 2)
+    let history = g.history()
+    let moves = ""
+    // html += `<pre>${h}</pre>`
+    // make a table of moves
+    for (let i = 0; i < history.length; i += 2) {
+        moves += `<tr>
+        <td>${i / 2 + 1}</td>
+        <td id="gameMove${i}" onclick="mov(${i})">${history[i]}</td>
+        <td id="gameMove${i + 1}" onclick="mov(${i + 1})">${history[i + 1]}</td>
+        </tr>`
+    }
+    // $("#game-data").html(html)
+    $("#game-history").html(moves)
 }
 
 
@@ -336,18 +329,15 @@ $(document).ready(function () {
         navigator.clipboard.readText().then(e => {
             // console.log(e);
             // if (e.match(/(?=\s*)([rnbqkpRNBQKP1-8]+\/){7}([rnbqkpRNBQKP1-8]+)\s[bw-]\s(([a-hkqA-HKQ]{1,4})|(-))\s(([a-h][36])|(-))\s\d+\s\d+(?=\s*)/)) {
-            if (game.validate_fen(e).valid) {
+            if (game.validate_fen(e).valid) { // fen
                 game.reset();
                 game.load(e)
-                board.position(game.fen());
                 currentPly = -1;
-                $("#game-data").html("From FEN")
+                board.position(game.fen());
+                $("#game-data").text("From FEN")
                 gameHistory = []
-            } else {
-                game.reset();
-                PGNloader(e)
-                currentPly = -1;
-                board.position(game.fen());
+            } else { // pgn
+                load_pgn(e)
             }
         })
     });
@@ -380,34 +370,6 @@ $(document).ready(function () {
             } else {
                 $('#btnPrevious').click();
             }
-        }
-        return false;
-    });
-
-    $(document).keydown(function (e) {
-        if (e.keyCode == 38) { //up arrow
-            if (currentGame > 0) {
-                if (e.ctrlKey) {
-                    loadGame(0);
-                } else {
-                    loadGame(currentGame - 1);
-                }
-            }
-            $('#gameSelect').val(currentGame);
-        }
-        return false;
-    });
-
-    $(document).keydown(function (e) {
-        if (e.keyCode == 40) { //down arrow
-            if (currentGame < pgnData.length - 1) {
-                if (e.ctrlKey) {
-                    loadGame(pgnData.length - 1);
-                } else {
-                    loadGame(currentGame + 1);
-                }
-            }
-            $('#gameSelect').val(currentGame);
         }
         return false;
     });
@@ -458,38 +420,13 @@ function mov(ply) {
     prepareMove()
 }
 
-function onChange() { //fires when the board position changes
-    //highlight the current move
-    $("[id^='gameMove']").removeClass('highlight');
-    $('#gameMove' + currentPly).addClass('highlight');
-    clearAnnotation()
-}
-
-function loadGame(i) {
-    PGNloader(pgnData[i].join('\n'), { newline_char: '\n' })
-    currentGame = i;
-}
-
-function PGNloader(pgntext) {
+function load_pgn(pgntext) {
     game.reset()
     game.load_pgn(pgntext);
     writeGameText(game);
     gameHistory = game.history({ verbose: true });
     mov(-1);
-}
-
-function loadallpgns() {
-    //only need the headers here, issue raised on github
-    //read all the games to populate the select
-    for (var i = 0; i < pgnData.length; i++) {
-        var g = new Chess();
-        g.load_pgn(pgnData[i].join('\n'), { newline_char: '\n' });
-        var h = g.header();
-        $('#gameSelect')
-            .append($('<option></option>')
-                .attr('value', i)
-                .text(h.White + ' - ' + h.Black + ', ' + h.Event + ' ' + h.Site + ' ' + h.Date));
-    }
+    board.position(game.fen());
 }
 
 function computePath(s1, s2) {
@@ -652,24 +589,23 @@ function buildOverlayElement() {
 function mainfunction() {
     board = new ChessBoard('board', cfg);
     window.onresize = function () { board.resize() }
-
+    $board.oncontextmenu = function (e) { e.preventDefault(); return false }
     buildOverlayElement()
 
     game = new Chess();
-    loadallpgns()
     game.reset();
     uciCmd('uci');
-    // uciCmd('setoption name MultiPV value 3');
     uciCmd('ucinewgame');
     uciCmd('isready');
     engineStatus.engineReady = false;
     engineStatus.search = null;
-    evaluation_el = document.getElementById("evaluation")
     displayStatus();
     prepareMove();
+    load_pgn(thepgn)
 }
 
 //analysis code
+let evaltype = "cp"
 var evalres = 0
 var preevalres = 0
 var analysislog = { move: [], anno: [], color: [], eval: [] }
@@ -768,26 +704,3 @@ function drawChart(moveeval) {
         }
     });
 }
-
-// https://lichess.org/HaUeZaAV/white#2
-
-// [Event "Rated Blitz game"]
-// [Site "https://lichess.org/HaUeZaAV"]
-// [Date "2020.08.21"]
-// [White "SohamKorade"]
-// [Black "gambithero"]
-// [Result "1/2-1/2"]
-// [UTCDate "2020.08.21"]
-// [UTCTime "16:17:22"]
-// [WhiteElo "1497"]
-// [BlackElo "1472"]
-// [WhiteRatingDiff "-1"]
-// [BlackRatingDiff "+1"]
-// [Variant "Standard"]
-// [TimeControl "180+2"]
-// [ECO "A45"]
-// [Opening "Indian Game"]
-// [Termination "Normal"]
-// [Annotator "lichess.org"]
-
-// 1. d4 Nf6 { A45 Indian Game } 2. Bf4 d6?! { (-0.09 → 0.43) Inaccuracy. e6 was best. } (2... e6 3. c4 d5 4. e3 c5 5. Nc3 cxd4 6. exd4 Nc6 7. c5) 3. e3 c6 4. Nf3 g5?? { (0.01 → 2.33) Blunder. Nh5 was best. } (4... Nh5 5. Nbd2 Nd7 6. Bd3 Nxf4 7. exf4 g6 8. O-O Bg7 9. Re1) 5. Bxg5 Bg4 6. h3?? { (2.60 → -2.69) Blunder. Bxf6 was best. } (6. Bxf6 exf6 7. Nbd2 Nd7 8. a4 Rg8 9. Bd3 Be6 10. O-O Bh3 11. Ne1 Bg4 12. Qc1 d5) 6... Bxf3 7. Qxf3 Qa5+ 8. Nc3 Qxg5 9. Bd3 Rg8 10. Rg1 Nbd7 11. O-O-O O-O-O 12. Kb1 Kb8 13. Ne4 Nxe4 14. Bxe4 Nf6 15. Bxc6? { (-3.18 → -6.19) Mistake. Bd3 was best. } (15. Bd3 d5) 15... bxc6 16. Qxc6 Rc8 17. Qa6 Qd5 18. Rd3 Rc6 19. Rb3+ Rb6 20. Rxb6+ axb6 21. Qxb6+ Qb7?! { (-5.04 → -3.38) Inaccuracy. Kc8 was best. } (21... Kc8 22. g4 e6 23. Qa6+ Kd7 24. c4 Qe4+ 25. Ka1 Ke7 26. c5 dxc5 27. dxc5 Nd5 28. Rc1) 22. Qd8+ Ka7 23. Qa5+ Qa6 24. Qc7+ Qb7 25. Qa5+ Kb8 26. Qd8+ Qc8 27. Qb6+ Qb7?? { (-3.43 → 0.00) Blunder. Ka8 was best. } (27... Ka8 28. g4 Qb7 29. Qa5+ Qa7 30. Qb5 Qd7 31. Qa5+ Kb8 32. g5 Qc7 33. Qf5 h6 34. h4) 28. Qd8+ Qc8 29. Qb6+ Qb7?? { (-3.36 → 0.00) Blunder. Ka8 was best. } (29... Ka8 30. g4 Qb7 31. Qa5+ Qa7 32. Qb5 Qd7 33. Qa5+ Kb8 34. g5 Qc7 35. Qf5 Qb7 36. h4) 30. Qd8+ Qc8 { The game is a draw. } 1/2-1/2

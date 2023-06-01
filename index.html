@@ -2,8 +2,8 @@
 
 <head>
     <link rel="stylesheet" href="chessboard-1.0.0.css" />
-    <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="https://unpkg.com/chota@latest">
+    <link rel="stylesheet" href="styles.css" />
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="chess.js"></script>
     <script src="chessboard-1.0.0.js"></script>
@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
-<body>
+<body class="dark">
     <div class="container">
         <div class="row">
             <div class="col-12">
@@ -21,39 +21,44 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-6-md">
-                <div id="board" oncontextmenu="return 0"></div>
-            </div>
-            <div class="col-6-md">
-                <!-- PGNVIEWER -->
-                <div class="extradata scrollable">
-                    <div class="navigation">
-                        <div id="board-buttons">
-                            <button id="btnStart">Start</button>
-                            <button id="btnPrevious">Previous</button>
-                            <button id="btnNext">Next</button>
-                            <button id="btnEnd">End</button>
-                            <button id="btnFlip" onclick="board.flip()">Flip</button>
-                            <button id="btnPaste">Paste Game</button>
-                            <button id="btnAnalyze">Analyze</button>
-                        </div>
-                        <hr>
-                        <div id="game-data">
-                        </div>
+            <div class="col-7-md col-12">
+                <div class="row">
+                    <div class="col-1">
+                        <div id="evalbarB"></div>
+                        <div id="evalbarW"></div>
+                        <span id="eval">0</span>
                     </div>
-
-                    <hr>
-                    <div id="engineStatus">...</div>
-                    <hr>
-                    <b>Evaluation</b>
-                    <pre id="evaluation"></pre>
-                    <canvas id="myChart"></canvas>
+                    <div class="col-11">
+                        <div id="board"></div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div id="evalbox">
-            <progress id="eval1" max="5" value="0" style="direction: rtl"></progress>
-            <span id="eval">0</span>
+            <div class="col-5-md">
+                <!-- PGNVIEWER -->
+                <div class="navigation">
+                    <div id="board-buttons">
+                        <button id="btnStart"> |&lt; </button>
+                        <button id="btnPrevious"> &lt; </button>
+                        <button id="btnNext"> &gt; </button>
+                        <button id="btnEnd"> &gt;| </button>
+                        <hr>
+                        <button id="btnFlip" onclick="board.flip()">Flip</button>
+                        <button id="btnPaste">Paste Game</button>
+                        <button id="btnAnalyze">Analyze</button>
+                    </div>
+                    <hr>
+                    <div id="game-data" style="max-height: 20%; overflow-y: scroll;">
+                        <table>
+                            <tbody id="game-history">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <hr>
+                <div id="engineStatus">...</div>
+                <hr>
+                <canvas id="myChart"></canvas>
+            </div>
         </div>
     </div>
 </body>
