@@ -3,47 +3,58 @@
 <head>
     <link rel="stylesheet" href="chessboard-1.0.0.css" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="https://unpkg.com/chota@latest">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="chess.js"></script>
     <script src="chessboard-1.0.0.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.3/Chart.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js" defer></script>
     <title>Soham Chess Analysis</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
-<body onresize="board.resize()">
-    <div class="boardbox">
-        <div id="board" oncontextmenu="event.preventDefault();return false;">
-        </div>
-        <div id="eval">
-            <progress id="eval1" max="5" value="0" style="direction: rtl"></progress>
-            <progress id="eval2" max="5" value="0"></progress>
-        </div>
-    </div>
-    <!-- PGNVIEWER -->
-    <div class="extradata scrollable">
-        <div class="navigation">
-            <div id="board-buttons">
-                <button id="btnStart">Start</button>
-                <button id="btnPrevious">Previous</button>
-                <button id="btnNext">Next</button>
-                <button id="btnEnd">End</button>
-                <button id="btnFlip" onclick="board.flip()">Flip</button>
-                <button id="btnPaste">Paste Game</button>
-                <button id="btnAnalyze">Analyze</button>
-            </div>
-            <hr>
-            <div id="game-data">
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1>Soham Chess Analysis</h1>
             </div>
         </div>
+        <div class="row">
+            <div class="col-6-md">
+                <div id="board" oncontextmenu="return 0"></div>
+            </div>
+            <div class="col-6-md">
+                <!-- PGNVIEWER -->
+                <div class="extradata scrollable">
+                    <div class="navigation">
+                        <div id="board-buttons">
+                            <button id="btnStart">Start</button>
+                            <button id="btnPrevious">Previous</button>
+                            <button id="btnNext">Next</button>
+                            <button id="btnEnd">End</button>
+                            <button id="btnFlip" onclick="board.flip()">Flip</button>
+                            <button id="btnPaste">Paste Game</button>
+                            <button id="btnAnalyze">Analyze</button>
+                        </div>
+                        <hr>
+                        <div id="game-data">
+                        </div>
+                    </div>
 
-        <hr>
-        <div id="engineStatus">...</div>
-        <hr>
-        <b>Evaluation</b>
-        <pre id="evaluation"></pre>
-        <canvas id="myChart"></canvas>
+                    <hr>
+                    <div id="engineStatus">...</div>
+                    <hr>
+                    <b>Evaluation</b>
+                    <pre id="evaluation"></pre>
+                    <canvas id="myChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div id="evalbox">
+            <progress id="eval1" max="5" value="0" style="direction: rtl"></progress>
+            <span id="eval">0</span>
+        </div>
     </div>
 </body>
 
