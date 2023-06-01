@@ -1,0 +1,94 @@
+/* @media only screen and (max-width: 768px) { */
+
+
+/* For mobile phones: */
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+button {
+    padding: 5px;
+    font-size: large;
+}
+
+.gameMoves>span {
+    cursor: pointer;
+    background-color: lightblue;
+    text-decoration: none;
+    color: black;
+}
+
+.gameMoves>.gameResult,
+.gameMoves>.gameAnno {
+    background-color: white;
+    /* font-weight: bold; */
+}
+
+.overlay-4fc5e {
+    pointer-events: none;
+    position: absolute;
+    z-index: 10;
+    opacity: 1.0;
+    fill: #efb700;
+    stroke: #efb700;
+}
+
+.overlay-4fc5e defs {
+    stroke: none;
+}
+
+.overlay-group-672a1 {
+    opacity: 0.7;
+    stroke-linecap: square;
+    stroke-linejoin: round;
+    marker-end: url(#arrowhead);
+    marker-start: url(#bulb);
+    fill: none;
+}
+
+.highlight-white {
+    box-shadow: inset 0 0 3px 3px yellow;
+}
+
+.highlight-black {
+    box-shadow: inset 0 0 3px 3px blue;
+}
+
+.highlight {
+    font-weight: bold;
+}
+
+#board {
+    width: auto;
+    margin: auto;
+    max-width: 400px;
+    touch-action: none;
+}
+
+.piece-417db {
+    touch-action: auto;
+    cursor: grab;
+}
+
+#gameMoves,
+.scrollable {
+    overflow-y: scroll;
+    height: 30%;
+}
+
+#eval {
+    display: flex;
+    justify-content: center;
+}
+
+#evaluation {
+    overflow-x: scroll;
+    width: max-content;
+}
+
+
+/* } */
