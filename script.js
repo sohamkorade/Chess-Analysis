@@ -24,7 +24,7 @@ var pgnData = []
 
 fetch("MagnusCarlsen.pgn").then(e => e.text()).then(e => {
     pgnData = e.split("\n\n\n").map(g => g.split("\n"))
-        //load the first game
+    //load the first game
     loadGame(0);
 })
 
@@ -42,7 +42,7 @@ var evaluation_el;
 var announced_game_over;
 // do not pick up pieces if the game is over
 // only pick up pieces for White
-var onDragStart = function(source, piece, position, orientation) {
+var onDragStart = function (source, piece, position, orientation) {
     // var re = playerColor == 'white' ? /^b/ : /^w/
     // if (game.game_over() ||
     //     piece.search(re) !== -1) {
@@ -76,13 +76,7 @@ function displayStatus() {
     $('#engineStatus').html(status);
     $("#eval").text(engineStatus.score)
     if (engineStatus.score != undefined) {
-        if (engineStatus.score > 0) {
-            $("#eval1").val(engineStatus.score)
-            $("#eval2").val(0)
-        } else {
-            $("#eval1").val(0)
-            $("#eval2").val(-engineStatus.score)
-        }
+        $("#eval1").val(engineStatus.score)
     }
 }
 
@@ -118,7 +112,7 @@ function prepareMove() {
     }
 }
 
-evaler.onmessage = function(event) {
+evaler.onmessage = function (event) {
     var line;
 
     if (event && typeof event === "object") {
@@ -140,7 +134,7 @@ evaler.onmessage = function(event) {
     evaluation_el.textContent += line;
 }
 
-engine.onmessage = function(event) {
+engine.onmessage = function (event) {
     var line;
 
     if (event && typeof event === "object") {
@@ -177,7 +171,7 @@ engine.onmessage = function(event) {
             if (match[1] == 'cp') {
                 engineStatus.score = (score / 100.0).toFixed(2);
                 evalres = engineStatus.score
-                    /// Did it find a mate?
+                /// Did it find a mate?
             } else if (match[1] == 'mate') {
                 engineStatus.score = 'Mate in ' + Math.abs(score);
                 evalres = 10 * (game.turn() == 'w' ? 1 : -1)
@@ -192,7 +186,7 @@ engine.onmessage = function(event) {
     displayStatus();
 };
 
-var onDrop = function(source, target) {
+var onDrop = function (source, target) {
     // see if the move is legal
     var move = game.move({
         from: source,
@@ -211,11 +205,11 @@ var onDrop = function(source, target) {
     }
 };
 
-var onMouseoutSquare = function(source, piece, position, orientation) {
+var onMouseoutSquare = function (source, piece, position, orientation) {
     if (mouserightbuttondown) {
         if (beginarrow == "") {
             beginarrow = source
-                // console.log("begin:", beginarrow)
+            // console.log("begin:", beginarrow)
         }
     } else if (beginarrow != "") {
         // console.log("end:", source)
@@ -235,21 +229,21 @@ function HighlightMove(move = null, eval) {
     }
     if (move != null) {
         addArrowAnnotation(move.from, move.to, false, eval)
-            // if (move.color === 'w') {
-            //     $board.find('.' + squareClass).removeClass('highlight-white')
-            //     $board.find('.square-' + move.from).addClass('highlight-white')
-            //     $board.find('.square-' + move.to).addClass('highlight-white')
-            // } else {
-            //     $board.find('.' + squareClass).removeClass('highlight-black')
-            //     $board.find('.square-' + move.from).addClass('highlight-black')
-            //     $board.find('.square-' + move.to).addClass('highlight-black')
-            // }
+        // if (move.color === 'w') {
+        //     $board.find('.' + squareClass).removeClass('highlight-white')
+        //     $board.find('.square-' + move.from).addClass('highlight-white')
+        //     $board.find('.square-' + move.to).addClass('highlight-white')
+        // } else {
+        //     $board.find('.' + squareClass).removeClass('highlight-black')
+        //     $board.find('.square-' + move.from).addClass('highlight-black')
+        //     $board.find('.square-' + move.to).addClass('highlight-black')
+        // }
     }
 }
 
 // update the board position after the piece snap
 // for castling, en passant, pawn promotion
-var onSnapEnd = function() {
+var onSnapEnd = function () {
     board.position(game.fen());
 };
 
@@ -310,35 +304,35 @@ function writeGameText(g) {
 }
 
 
-$(document).ready(function() {
+$(document).ready(function () {
     //buttons
-    $('#btnStart').on('click', function() {
+    $('#btnStart').on('click', function () {
         game.reset();
         currentPly = -1;
         board.position(game.fen());
     });
-    $('#btnPrevious').on('click', function() {
+    $('#btnPrevious').on('click', function () {
         if (currentPly >= 0) {
             game.undo();
             currentPly--;
             board.position(game.fen());
         }
     });
-    $('#btnNext').on('click', function() {
+    $('#btnNext').on('click', function () {
         if (currentPly < gameHistory.length - 1) {
             currentPly++;
             game.move(gameHistory[currentPly].san);
             board.position(game.fen());
         }
     });
-    $('#btnEnd').on('click', function() {
+    $('#btnEnd').on('click', function () {
         while (currentPly < gameHistory.length - 1) {
             currentPly++;
             game.move(gameHistory[currentPly].san);
         }
         board.position(game.fen());
     });
-    $('#btnPaste').on('click', function() {
+    $('#btnPaste').on('click', function () {
         navigator.clipboard.readText().then(e => {
             // console.log(e);
             // if (e.match(/(?=\s*)([rnbqkpRNBQKP1-8]+\/){7}([rnbqkpRNBQKP1-8]+)\s[bw-]\s(([a-hkqA-HKQ]{1,4})|(-))\s(([a-h][36])|(-))\s\d+\s\d+(?=\s*)/)) {
@@ -358,7 +352,7 @@ $(document).ready(function() {
         })
     });
 
-    $('#btnAnalyze').on('click', function() {
+    $('#btnAnalyze').on('click', function () {
         let deftime = prompt("Maximum time for analysis per move in seconds", 1)
         if (deftime == null) return
         $("#btnEnd").click()
@@ -368,7 +362,7 @@ $(document).ready(function() {
     });
 
     //key bindings
-    $(document).keydown(function(e) {
+    $(document).keydown(function (e) {
         if (e.keyCode == 39) { //right arrow
             if (e.ctrlKey) {
                 $('#btnEnd').click();
@@ -379,7 +373,7 @@ $(document).ready(function() {
         }
     });
 
-    $(document).keydown(function(e) {
+    $(document).keydown(function (e) {
         if (e.keyCode == 37) { //left arrow
             if (e.ctrlKey) {
                 $('#btnStart').click();
@@ -390,7 +384,7 @@ $(document).ready(function() {
         return false;
     });
 
-    $(document).keydown(function(e) {
+    $(document).keydown(function (e) {
         if (e.keyCode == 38) { //up arrow
             if (currentGame > 0) {
                 if (e.ctrlKey) {
@@ -404,7 +398,7 @@ $(document).ready(function() {
         return false;
     });
 
-    $(document).keydown(function(e) {
+    $(document).keydown(function (e) {
         if (e.keyCode == 40) { //down arrow
             if (currentGame < pgnData.length - 1) {
                 if (e.ctrlKey) {
@@ -418,7 +412,7 @@ $(document).ready(function() {
         return false;
     });
 
-    $(document).mousedown(function(e) {
+    $(document).mousedown(function (e) {
         mouseleftbuttondown = (e.button == 0)
         mousewheelbuttondown = (e.button == 1)
         mouserightbuttondown = (e.button == 2)
@@ -433,7 +427,7 @@ $(document).ready(function() {
         }
     });
 
-    $(document).mouseup(function(e) {
+    $(document).mouseup(function (e) {
         mousewheelbuttondown = false
         mouserightbuttondown = false
         mouseleftbuttondown = false
@@ -591,7 +585,7 @@ function buildOverlay() {
     overlayEl.empty();
     overlayEl.append(defsEl);
 };
-var addArrowAnnotation = function(source, target, nodouble = true, eval) {
+var addArrowAnnotation = function (source, target, nodouble = true, eval) {
     if (arrowannotations[source] == target) {
         delete arrowannotations[source]
         if (nodouble) {
@@ -623,14 +617,14 @@ var addArrowAnnotation = function(source, target, nodouble = true, eval) {
     }
 }
 
-var removeArrowAnnotation = function(source, target) {
+var removeArrowAnnotation = function (source, target) {
     overlayEl.find(
         '> g.square-' + source +
         (target !== undefined ? ' > path.square-' + target : '')
     ).remove();
 }
 
-var clearAnnotation = function() {
+var clearAnnotation = function () {
     arrowannotations = {}
     buildOverlay();
 }
@@ -657,7 +651,7 @@ function buildOverlayElement() {
 
 function mainfunction() {
     board = new ChessBoard('board', cfg);
-    window.onresize = function() { board.resize() }
+    window.onresize = function () { board.resize() }
 
     buildOverlayElement()
 
@@ -684,15 +678,15 @@ function Analyse(pgn = null, time = 200) {
     analysislog = { "move": [], "anno": [0, 0.8, 0.9700000000000001, 0.49, -0.07, -0.37, 0.02, 0.46, 1.57, 2.16, 1.82, 1.96, 2.5, -0.5799999999999998, -3.78, -3.8, -3.82, -3.63, -3.5300000000000002, -3.9, -4.68, -4.779999999999999, -4.38, -4.13, -4.07, -4.23, -4.08, -4.02, -4.48, -5.68, -6.48, -6.48, -6.630000000000001, -6.99, -7.470000000000001, -9.11, -9.41, -7.3, -5.08, -3.9, -3.9, -3.9, -3.46, -3.9000000000000004, -4.78, -4.220000000000001, -3.66, -3.95, -2.12, 0, 0, 0, -1.85, -2.69, -0.84, 0, 0, 0, 0, 0, 0], "color": ["black", "grey", "grey", "grey", "black", "black", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "black", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "yellow", "grey", "grey", "grey", "yellow", "yellow", "black", "grey", "grey", "grey", "grey", "grey", "grey"], "eval": [0, 0.8, 0.17, 0.32, -0.39, 0.02, 0, 0.46, 1.11, 1.05, 0.77, 1.19, 1.31, -1.89, -1.89, -1.91, -1.91, -1.72, -1.81, -2.09, -2.59, -2.19, -2.19, -1.94, -2.13, -2.1, -1.98, -2.04, -2.44, -3.24, -3.24, -3.24, -3.39, -3.6, -3.87, -5.24, -4.17, -3.13, -1.95, -1.95, -1.95, -1.95, -1.51, -2.39, -2.39, -1.83, -1.83, -2.12, 0, 0, 0, 0, -1.85, -0.84, 0, 0, 0, 0, 0, 0, 0] }
     console.log(analysislog)
     drawChart(analysislog.anno)
-        // analysislog = { move: [], anno: [], color: [], eval: [] }
-        // if (pgn == null) { pgn = get_moves().trim().split(" ") }
-        // // pgn = pgn.trim().split(" ")
-        // uciCmd("ucinewgame")
-        // evalres = -1
-        // analysislog.color.push("black")
-        // analysislog.anno.push(0)
-        // analysislog.eval.push(0)
-        // movebymoveanalyse(pgn, time)
+    // analysislog = { move: [], anno: [], color: [], eval: [] }
+    // if (pgn == null) { pgn = get_moves().trim().split(" ") }
+    // // pgn = pgn.trim().split(" ")
+    // uciCmd("ucinewgame")
+    // evalres = -1
+    // analysislog.color.push("black")
+    // analysislog.anno.push(0)
+    // analysislog.eval.push(0)
+    // movebymoveanalyse(pgn, time)
 }
 
 function movebymoveanalyse(moves, time = 1000, count = 0) {
@@ -738,16 +732,16 @@ function movebymoveanalyse(moves, time = 1000, count = 0) {
     }
     evalres = -1
     mov(count)
-        // uciCmd(`position startpos moves ${moves.slice(0,-1).join(" ").trim()}`);
-        // uciCmd(`go searchmoves ${moves[moves.length-1]} depth 15`) // movetime ${time-100}`)
-        // setTimeout(movebymoveanalyse, time, moves.slice(0, -1), time, count + 1);
+    // uciCmd(`position startpos moves ${moves.slice(0,-1).join(" ").trim()}`);
+    // uciCmd(`go searchmoves ${moves[moves.length-1]} depth 15`) // movetime ${time-100}`)
+    // setTimeout(movebymoveanalyse, time, moves.slice(0, -1), time, count + 1);
     let startposmoves = moves.slice(0, count).join(" ").trim()
     if (startposmoves == "") {
         uciCmd(`position startpos`);
     } else {
         uciCmd(`position startpos moves ${startposmoves}`);
     }
-    uciCmd(`go searchmoves ${moves[count]} movetime ${time-100}`)
+    uciCmd(`go searchmoves ${moves[count]} movetime ${time - 100}`)
     setTimeout(movebymoveanalyse, time, moves, time, count + 1);
 }
 
@@ -768,7 +762,7 @@ function drawChart(moveeval) {
         options: {
             legend: { display: false },
             events: ['click'],
-            onClick: function(c, i) {
+            onClick: function (c, i) {
                 if (i[0] != undefined) mov(i[0]._index)
             }
         }
