@@ -22,25 +22,40 @@ var thepgn = `[Event "Rated Bullet game"]
 //==================================================
 var game;
 var board;
+var dirty = false;
 
 /// We can load Stockfish via Web Workers or via STOCKFISH() if loaded from a <script> tag.
 var engine = typeof STOCKFISH === "function" ? STOCKFISH() : new Worker('stockfish.js');
-var engineStatus = {};
-var displayScore = false;
-var playerColor = 'white';
-var isEngineRunning = false;
+var engineStatus = {
+    score: 0,
+    mate: false,
+    loaded: false,
+    ready: false,
+    search: null,
+    running: false
+};
+let evalHistory = []
 
-function uciCmd(cmd, which) {
-    console.log("UCI: " + cmd);
+let optionPlayEngine = false
+let optionOverwrite = false
+let optionEvaluation = false
+let defaultFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+let startFEN = defaultFEN
+let thinkingTime = 3000
+var $board = $('#board')
+var squareClass = 'square-55d63'
+var overlayEl;
 
-    (which || engine).postMessage(cmd);
+function uciCmd(cmd) {
+    // console.log("UCI: " + cmd);
+    engine.postMessage(cmd);
 }
 
 function displayStatus() {
     var status = 'Engine: ';
-    if (!engineStatus.engineLoaded) {
+    if (!engineStatus.loaded) {
         status += 'loading...';
-    } else if (!engineStatus.engineReady) {
+    } else if (!engineStatus.ready) {
         status += 'loaded...';
     } else {
         status += 'ready.';
@@ -48,21 +63,25 @@ function displayStatus() {
     let score = engineStatus.score
     if (engineStatus.search) {
         status += engineStatus.search;
-        if (score && displayScore) {
+        if (score) {
             status += (score.substr(0, 4) === "Mate" ? " " : ' Score: ') + score;
         }
     }
-    $('#engineStatus').text(status);
+    // $('#engineStatus').text(status);
+    if (optionPlayEngine) score = 0
     if (score != undefined) {
-        let sign = score > 0 ? "+" : "-"
         if (score[0] == "#") {
             $("#eval").text(score)
+        } else if (score[0] == '<' || score[0] == '>') {
+            $("#eval").text(score)
+            score = score.substr(3)
         } else {
+            let sign = score > 0 ? "+" : "-"
             $("#eval").text(sign + Math.abs(score))
         }
         let bar = calc_bar(score) + 50
         $("#evalbarW").height(bar + "%")
-        $("#evalbarB").height((100 - bar) + "%")
+        $("#evalbarB").height(100 - bar + "%")
     }
 }
 
@@ -78,43 +97,60 @@ function get_moves() {
     return moves;
 }
 
-var optionShowMoveArrows = true
-
-function prepareMove() {
-    board.position(game.fen());
+function runEngine() {
     clearAnnotation()
-    var turn = game.turn() == 'w' ? 'white' : 'black';
     uciCmd('stop')
-    if (optionShowMoveArrows) {
+    if (currEnginePly) return
+    if (optionEvaluation || optionPlayEngine) {
         uciCmd('position startpos moves' + get_moves());
-
         // uciCmd("go infinite");
-        uciCmd("go movetime 1000");
-        isEngineRunning = true;
+        currEnginePly = currPly;
+        console.log("evaluating for", currEnginePly)
+        evalHistory[currEnginePly] = 0
+        uciCmd("go movetime " + thinkingTime);
+        engineStatus.running = true;
     }
 }
 
-engine.onmessage = function (event) {
-    var line;
+function update_game_result() {
+    game.header().Result = game.in_checkmate() ? (game.turn() == 'w' ? "0-1" : "1-0") : (game.in_draw() ? "1/2-1/2" : "*")
+}
 
+function newMoveToHistory(move) {
+    if (!game.move(move)) return false
+    board.position(game.fen())
+    gameHistory = game.history({ verbose: true })
+    currPly++
+    update_game_result()
+    writeGameText()
+}
+
+engine.onmessage = function (event) {
+    var line = event
     if (event && typeof event === "object") {
         line = event.data;
-    } else {
-        line = event;
     }
-    console.log("Reply: " + line)
+    // console.log("Reply: " + line)
+    engineStatus.score = null;
     if (line == 'uciok') {
-        engineStatus.engineLoaded = true;
+        engineStatus.loaded = true;
     } else if (line == 'readyok') {
-        engineStatus.engineReady = true;
+        engineStatus.ready = true;
     } else {
-        // var match = line.match(/^bestmove ([a-h][1-8])([a-h][1-8])([qrbn])?/);
-        var match = line.match(/(?<=pv )([a-h][1-8])([a-h][1-8])([qrbn])?/);
+        var moved = line.match(/^bestmove ([a-h][1-8])([a-h][1-8])([qrbn])?/);
         /// Did the AI move?
+        if (moved) {
+            currEnginePly = null
+            if (optionPlayEngine) {
+                newMoveToHistory({ from: moved[1], to: moved[2], promotion: moved[3] })
+            }
+        }
+        var match = line.match(/(?<=pv )([a-h][1-8])([a-h][1-8])([qrbn])?/);
+        /// Is the AI thinking?
         if (match) {
-            isEngineRunning = false;
+            engineStatus.running = false;
             if (line.match(/(?<=depth )-?\d+/) >= 10) {
-                HighlightMove({ from: match[1], to: match[2], promotion: match[3] }, evalres)
+                ArrowMove({ from: match[1], to: match[2], promotion: match[3] }, evalres)
             } else {
                 clearAnnotation()
             }
@@ -144,6 +180,17 @@ engine.onmessage = function (event) {
                 engineStatus.score = ((match[1] == 'upper') == (game.turn() == 'w') ? '<= ' : '>= ') + engineStatus.score
             }
         }
+        if (!optionPlayEngine && currEnginePly != null && engineStatus.score) {
+            while (evalHistory.length <= currEnginePly) evalHistory.push(0)
+            evalHistory[currEnginePly] = engineStatus.score
+            $("#gameEval" + currEnginePly).text(engineStatus.score)
+            if (currEnginePly > 0 && evalHistory[currEnginePly - 1] != 0) {
+                // $("#gameMove" + currentPly).css("background-color", "rgba(255, 0, 0, " + Math.abs(evalHistory[currentPly] - evalHistory[currentPly - 1]) / 10 + ")")
+                addPlyFeedback(currEnginePly, get_feedback(evalHistory[currEnginePly - 1], evalHistory[currEnginePly]))
+            }
+            // drawChart(evalHistory)
+            console.log("evaluated for", currEnginePly, ":", engineStatus.score)
+        }
     }
     displayStatus();
 };
@@ -159,28 +206,25 @@ function calc_bar(x) {
     }
 };
 
+function ArrowMove(move, eval) {
+    addArrowAnnotation(move.from, move.to, false, eval)
+}
 
-//soham edits
-var $board = $('#board')
-var squareClass = 'square-55d63'
+function HighlightMove(move, eval) {
+    $board.find('.square-55d63').removeClass('highlight-white')
+    if (move) {
+        $board.find('.square-' + move.from).addClass('highlight-white')
+        $board.find('.square-' + move.to).addClass('highlight-white')
+    }
+}
 
-function HighlightMove(move = null, eval) {
-    if (move == null) {
-        var history = game.history({ verbose: true })
-        var move = history[history.length - 1]
-    }
-    if (move != null) {
-        addArrowAnnotation(move.from, move.to, false, eval)
-        // if (move.color === 'w') {
-        //     $board.find('.' + squareClass).removeClass('highlight-white')
-        //     $board.find('.square-' + move.from).addClass('highlight-white')
-        //     $board.find('.square-' + move.to).addClass('highlight-white')
-        // } else {
-        //     $board.find('.' + squareClass).removeClass('highlight-black')
-        //     $board.find('.square-' + move.from).addClass('highlight-black')
-        //     $board.find('.square-' + move.to).addClass('highlight-black')
-        // }
-    }
+function addSqFeedback(square, type) {
+    $board.find('.square-55d63').css('background-image', '')
+    $board.find('.square-' + square).css('background-image', `url('move_feedbacks/${type}.svg')`)
+}
+function addPlyFeedback(ply, type) {
+    if (type == "") return
+    $('#gameMove' + ply).css('background-image', `url('move_feedbacks/${type}.svg')`)
 }
 
 var cfg = {
@@ -188,7 +232,7 @@ var cfg = {
     draggable: true,
     position: 'start',
     onDragStart: function (source, piece, position, orientation) {
-        var re = playerColor == 'white' ? /^b/ : /^w/
+        var re = game.turn() == 'w' ? /^b/ : /^w/
         // do not pick up pieces if the game is over
         // only pick up pieces for current player
         clearAnnotation()
@@ -196,21 +240,34 @@ var cfg = {
         return !game.game_over()
     },
     onDrop: function (source, target) {
-        // see if the move is legal
-        var move = game.move({
-            from: source,
-            to: target,
-            promotion: 'q'
-        });
-        // illegal move
-        if (move === null) {
-            return 'snapback';
-            clearAnnotation()
-        }
-        prepareMove();
         if (wasmouserightbuttondown) {
             addArrowAnnotation(source, target)
             wasmouserightbuttondown = false
+        } else {
+            // see if the move is legal
+            let promotion = 'q'
+            if (game.get(source).type == "p")
+                if (target[1] == "8" || target[1] == "1")
+                    promotion = prompt("Promotion? (q, r, b, n)")
+            var move = game.move({
+                from: source,
+                to: target,
+                promotion: promotion
+            });
+            // illegal move
+            if (move === null) {
+                return 'snapback';
+            }
+            currPly++
+            HighlightMove(move)
+            if (optionOverwrite) {
+                gameHistory = game.history({ verbose: true })
+                update_game_result()
+                writeGameText()
+            } else {
+                dirty = true;
+            }
+            runEngine();
         }
     },
     // update the board position after the piece snap
@@ -220,8 +277,10 @@ var cfg = {
     },
     onChange: function () { //fires when the board position changes
         //highlight the current move
-        $("[id^='gameMove']").removeClass('highlight');
-        $('#gameMove' + currentPly).addClass('highlight');
+        if (!dirty) {
+            $("[id^='gameMove']").removeClass('highlight');
+            $('#gameMove' + currPly).addClass('highlight');
+        }
         clearAnnotation()
     },
     // onMouseoverSquare: onMouseoverSquare,
@@ -238,12 +297,6 @@ var cfg = {
         }
     }
 };
-
-function setDisplayScore(flag) {
-    displayScore = flag;
-    displayStatus();
-}
-
 //PGN VIEWER-------------------------------------------------------------------
 
 
@@ -278,100 +331,139 @@ function writeGameText2(g) {
 
 }
 
-function writeGameText(g) {
-    let h = g.header()
-    h = JSON.stringify(h, null, 2)
-    let history = g.history()
+function writeGameText() {
+    let h = game.header()
+    let history = game.history({ verbose: true })
     let moves = ""
-    // html += `<pre>${h}</pre>`
+    let html = ""
+    html += `<pre>${JSON.stringify(h, null, 2)}</pre>`
     // make a table of moves
-    for (let i = 0; i < history.length; i += 2) {
-        moves += `<tr>
-        <td>${i / 2 + 1}</td>
-        <td id="gameMove${i}" onclick="mov(${i})">${history[i]}</td>
-        <td id="gameMove${i + 1}" onclick="mov(${i + 1})">${history[i + 1]}</td>
-        </tr>`
+    // add a blank move if black to move
+    let i = 0
+    if (history.length && history[0].color == 'b')
+        i = -1
+    for (; i < history.length; i += 2) {
+        let w = '', b = ''
+        if (i == -1)
+            w = `<td id="gameMove${i}" onclick="mov(${i})">...<span id="gameEval${i}">${evalHistory[i] || '-'}</span></td>`
+        else
+            w = `<td id="gameMove${i}" onclick="mov(${i})">${history[i].san}<span id="gameEval${i}">${evalHistory[i] || '-'}</span></td>`
+        if (i != history.length - 1)
+            b = `<td id = "gameMove${i + 1}" onclick = "mov(${i + 1})"> ${history[i + 1].san}<span id="gameEval${i + 1}">${evalHistory[i + 1] || '-'}</span></td>`
+        moves += `<tr><td>${Math.ceil(i / 2) + 1}</td>${w}${b}</tr>`
     }
-    // $("#game-data").html(html)
     $("#game-history").html(moves)
+    $("#game-result").html(`<div class="text-center">
+                    <h2><b>${h.Result || ""}</b></h2>
+                </div>`)
 }
 
 
 $(document).ready(function () {
     //buttons
     $('#btnStart').on('click', function () {
-        game.reset();
-        currentPly = -1;
-        board.position(game.fen());
+        mov(-1)
     });
     $('#btnPrevious').on('click', function () {
-        if (currentPly >= 0) {
-            game.undo();
-            currentPly--;
-            board.position(game.fen());
-        }
+        mov(currPly - 1)
     });
     $('#btnNext').on('click', function () {
-        if (currentPly < gameHistory.length - 1) {
-            currentPly++;
-            game.move(gameHistory[currentPly].san);
-            board.position(game.fen());
-        }
+        mov(currPly + 1)
     });
     $('#btnEnd').on('click', function () {
-        while (currentPly < gameHistory.length - 1) {
-            currentPly++;
-            game.move(gameHistory[currentPly].san);
-        }
-        board.position(game.fen());
+        mov(gameHistory.length - 1)
     });
     $('#btnPaste').on('click', function () {
         navigator.clipboard.readText().then(e => {
             // console.log(e);
             // if (e.match(/(?=\s*)([rnbqkpRNBQKP1-8]+\/){7}([rnbqkpRNBQKP1-8]+)\s[bw-]\s(([a-hkqA-HKQ]{1,4})|(-))\s(([a-h][36])|(-))\s\d+\s\d+(?=\s*)/)) {
             if (game.validate_fen(e).valid) { // fen
-                game.reset();
-                game.load(e)
-                currentPly = -1;
-                board.position(game.fen());
-                $("#game-data").text("From FEN")
-                gameHistory = []
-            } else { // pgn
-                load_pgn(e)
+                load_fen(e)
+                $('#chkOverwrite').prop('checked', optionOverwrite = true)
+            } else if (!load_pgn(e)) { // pgn
+                alert("Invalid FEN/PGN")
             }
         })
     });
 
+    $('#btnFlip').on('click', function () {
+        board.flip()
+        $("#evalbar").toggleClass("ulta")
+        $(".overlay-4fc5e").toggleClass("ulta")
+        displayStatus()
+    });
+
+    $('#btnCopyPGN').on('click', function () {
+        navigator.clipboard.writeText(game.pgn()).then(function () {
+            /* clipboard successfully set */
+        }, function () {
+            /* clipboard write failed */
+        });
+    });
+
+    $('#btnCopyFEN').on('click', function () {
+        navigator.clipboard.writeText(game.fen()).then(function () {
+            /* clipboard successfully set */
+        }, function () {
+            /* clipboard write failed */
+        });
+    });
+
     $('#btnAnalyze').on('click', function () {
-        let deftime = prompt("Maximum time for analysis per move in seconds", 1)
-        if (deftime == null) return
-        $("#btnEnd").click()
-        deftime = parseFloat(deftime)
-        if (deftime < 1) deftime = 1
-        if (deftime != null) Analyse(null, deftime * 1000)
+        Analyse(null, thinkingTime)
+    });
+
+    $('#btnNewGame').on('click', function () {
+        game.reset()
+        mov(-1)
+        evalHistory = []
+        gameHistory = []
+        update_game_result()
+        writeGameText()
+        $('#chkOverwrite').prop('checked', optionOverwrite = true)
+    });
+
+    $('#chkEngine').on('change', function () {
+        if (this.checked) {
+            optionEvaluation = true
+            runEngine()
+        } else {
+            optionEvaluation = false
+            clearAnnotation()
+        }
+    });
+
+    $('#chkOverwrite').on('change', function () {
+        optionOverwrite = this.checked
+    });
+
+    $('#chkPlayEngine').on('change', function () {
+        optionPlayEngine = this.checked
+        if (this.checked) {
+            $('#chkOverwrite').prop('checked', optionOverwrite = true)
+            runEngine()
+        }
+        $('#chkEngine').prop('disabled', this.checked)
+        $('#chkOverwrite').prop('disabled', this.checked)
+    });
+
+    $('#thinkTime').on('change', function () {
+        thinkingTime = parseInt(this.value) * 1000
     });
 
     //key bindings
     $(document).keydown(function (e) {
-        if (e.keyCode == 39) { //right arrow
-            if (e.ctrlKey) {
-                $('#btnEnd').click();
-            } else {
-                $('#btnNext').click();
-            }
-            return false;
-        }
-    });
-
-    $(document).keydown(function (e) {
-        if (e.keyCode == 37) { //left arrow
-            if (e.ctrlKey) {
-                $('#btnStart').click();
-            } else {
-                $('#btnPrevious').click();
-            }
-        }
-        return false;
+        if (e.key == 'ArrowLeft' && e.ctrlKey) $('#btnStart').click()
+        else if (e.key == 'ArrowRight' && e.ctrlKey) $('#btnEnd').click()
+        else if (e.key == 'ArrowLeft') $('#btnPrevious').click()
+        else if (e.key == 'ArrowRight') $('#btnNext').click()
+        else if (e.key == "f") $('#btnFlip').click()
+        else if (e.key == "e") $('#chkEngine').click()
+        else if (e.key == 'Home') $('#btnStart').click()
+        else if (e.key == 'End') $('#btnEnd').click()
+        else if (e.key == 'ArrowUp') mov(currPly - 2)
+        else if (e.key == 'ArrowDown') mov(currPly + 2)
+        return false
     });
 
     $(document).mousedown(function (e) {
@@ -405,33 +497,65 @@ var wasmousewheelbuttondown = false
 var beginarrow = ""
 var arrowannotations = {}
 
-//used for clickable moves in gametext
-//not used for buttons for efficiency
+var currPly = -1;
+let currEnginePly = null
+
+// used for clickable moves
 function mov(ply) {
-    if (ply > gameHistory.length - 1) ply = gameHistory.length - 1;
-    game.reset();
-    for (var i = 0; i <= ply; i++) {
-        game.move(gameHistory[i].san);
+    // console.log("mov", ply)
+    if (currPly != ply) {
+        ply = Math.min(ply, gameHistory.length - 1)
+        ply = Math.max(ply, -1)
+        if (dirty || ply == -1) {
+            while (currPly >= 0) {
+                game.undo()
+                currPly--
+            }
+            game.load(startFEN)
+            dirty = false;
+        }
+        while (currPly > ply) {
+            game.undo()
+            currPly--
+        }
+        while (currPly < ply) {
+            currPly++
+            game.move(gameHistory[currPly].san)
+        }
+        HighlightMove(gameHistory[currPly])
+        board.position(game.fen());
     }
-    currentPly = i - 1;
-    board.position(game.fen());
-    clearAnnotation()
     displayStatus()
-    prepareMove()
+    if (optionEvaluation) runEngine()
 }
 
 function load_pgn(pgntext) {
-    game.reset()
-    game.load_pgn(pgntext);
-    writeGameText(game);
-    gameHistory = game.history({ verbose: true });
-    mov(-1);
-    board.position(game.fen());
+    // console.log("PGN: " + pgntext)
+    startFEN = defaultFEN
+    if (!game.load_pgn(pgntext)) {
+        return false
+    }
+    // board.position(game.fen())
+    gameHistory = game.history({ verbose: true })
+    evalHistory = Array(gameHistory.length).fill(0)
+    writeGameText()
+    currPly = gameHistory.length - 1
+    $('#btnStart').click()
+}
+
+function load_fen(fen) {
+    startFEN = fen
+    mov(-1)
+    update_game_result()
+    writeGameText()
+    $("#game-data").text("From FEN")
+    gameHistory = []
+    evalHistory = []
 }
 
 function computePath(s1, s2) {
     var COLUMNS = 'abcdefgh'.split('')
-    var SQUARE_SIZE = $(".square-55d63.black-3c85d.square-a1").css("width").replace("px", "")
+    var SQ_SIZE = $(".square-a1").css("width").replace("px", "")
 
     function tristate(a, b) {
         if (a < b) return -0.25;
@@ -465,11 +589,11 @@ function computePath(s1, s2) {
         epsilon = { x: tristate(start.x, end.x), y: tristate(start.y, end.y) };
     }
 
-    var path = ["M", SQUARE_SIZE * (start.x + 0.5), SQUARE_SIZE * (start.y + 0.5)];
+    var path = ["M", SQ_SIZE * (start.x + 0.5), SQ_SIZE * (start.y + 0.5)];
     if (corner !== undefined) {
-        path.push("L", SQUARE_SIZE * (corner.x + 0.5), SQUARE_SIZE * (corner.y + 0.5));
+        path.push("L", SQ_SIZE * (corner.x + 0.5), SQ_SIZE * (corner.y + 0.5));
     }
-    path.push("L", SQUARE_SIZE * (end.x + epsilon.x + 0.5), SQUARE_SIZE * (end.y + epsilon.y + 0.5));
+    path.push("L", SQ_SIZE * (end.x + epsilon.x + 0.5), SQ_SIZE * (end.y + epsilon.y + 0.5));
 
     return path.join(" ");
 }
@@ -521,8 +645,9 @@ function buildOverlay() {
     );
     overlayEl.empty();
     overlayEl.append(defsEl);
-};
-var addArrowAnnotation = function (source, target, nodouble = true, eval) {
+}
+
+function addArrowAnnotation(source, target, nodouble = true, eval) {
     if (arrowannotations[source] == target) {
         delete arrowannotations[source]
         if (nodouble) {
@@ -532,11 +657,11 @@ var addArrowAnnotation = function (source, target, nodouble = true, eval) {
     }
 
     arrowannotations[source] = target
-    var SQUARE_SIZE = $(".square-55d63.black-3c85d.square-a1").css("width").replace("px", "")
+    var SQ_SIZE = $(".square-a1").css("width").replace("px", "")
     var groupEl = overlayEl.find('> .square-' + source);
     if (!groupEl.length) {
         groupEl = createSvgEl("g", {
-            'class': CSSx['overlayGroup'] + " square-" + source
+            'class': "overlay-group-672a1 square-" + source
         });
         overlayEl.append(groupEl);
     }
@@ -546,9 +671,9 @@ var addArrowAnnotation = function (source, target, nodouble = true, eval) {
     var pathEl = overlayEl.find("> g.square-" + source + " > path.square-" + target);
     if (!pathEl.length) {
         var pathEl = createSvgEl("path", {
-            'class': CSSx['overlayArrow'] + " square-" + target,
+            'class': "overlay-arrow-9d6ed square-" + target,
             'd': computePath(source, target),
-            'stroke-width': (SQUARE_SIZE / 3)
+            'stroke-width': (SQ_SIZE / 4)
         });
         groupEl.append(pathEl);
     }
@@ -566,22 +691,14 @@ var clearAnnotation = function () {
     buildOverlay();
 }
 
-var CSSx = {
-    overlay: 'overlay-4fc5e',
-    overlayArrow: 'overlay-arrow-9d6ed',
-    overlayGroup: 'overlay-group-672a1'
-}
-
-var overlayEl;
-
 function buildOverlayElement() {
-    var SQUARE_SIZE = $(".square-55d63.black-3c85d.square-a1").css("width").replace("px", "")
+    var SQ_SIZE = $(".square-55d63.black-3c85d.square-a1").css("width").replace("px", "")
     $(".board-b72b1").before('<svg class="overlay-4fc5e"></svg>')
     overlayEl = $(".overlay-4fc5e")
     buildOverlay();
 
-    overlayEl.css('width', (SQUARE_SIZE * 8) + 'px');
-    overlayEl.css('height', (SQUARE_SIZE * 8) + 'px');
+    overlayEl.css('width', (SQ_SIZE * 8) + 'px');
+    overlayEl.css('height', (SQ_SIZE * 8) + 'px');
     overlayEl.css('padding', $(".board-b72b1").css("border-top-width"));
 
 }
@@ -589,19 +706,20 @@ function buildOverlayElement() {
 function mainfunction() {
     board = new ChessBoard('board', cfg);
     window.onresize = function () { board.resize() }
-    $board.oncontextmenu = function (e) { e.preventDefault(); return false }
+    const prevent = function (e) { e.preventDefault(); return false }
+    $board.on('contextmenu', prevent)
+    $('img').on('contextmenu', prevent)
+
     buildOverlayElement()
 
     game = new Chess();
-    game.reset();
+    load_pgn(thepgn)
     uciCmd('uci');
     uciCmd('ucinewgame');
     uciCmd('isready');
-    engineStatus.engineReady = false;
+    engineStatus.ready = false;
     engineStatus.search = null;
     displayStatus();
-    prepareMove();
-    load_pgn(thepgn)
 }
 
 //analysis code
@@ -611,18 +729,35 @@ var preevalres = 0
 var analysislog = { move: [], anno: [], color: [], eval: [] }
 
 function Analyse(pgn = null, time = 200) {
-    analysislog = { "move": [], "anno": [0, 0.8, 0.9700000000000001, 0.49, -0.07, -0.37, 0.02, 0.46, 1.57, 2.16, 1.82, 1.96, 2.5, -0.5799999999999998, -3.78, -3.8, -3.82, -3.63, -3.5300000000000002, -3.9, -4.68, -4.779999999999999, -4.38, -4.13, -4.07, -4.23, -4.08, -4.02, -4.48, -5.68, -6.48, -6.48, -6.630000000000001, -6.99, -7.470000000000001, -9.11, -9.41, -7.3, -5.08, -3.9, -3.9, -3.9, -3.46, -3.9000000000000004, -4.78, -4.220000000000001, -3.66, -3.95, -2.12, 0, 0, 0, -1.85, -2.69, -0.84, 0, 0, 0, 0, 0, 0], "color": ["black", "grey", "grey", "grey", "black", "black", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "black", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "yellow", "grey", "grey", "grey", "yellow", "yellow", "black", "grey", "grey", "grey", "grey", "grey", "grey"], "eval": [0, 0.8, 0.17, 0.32, -0.39, 0.02, 0, 0.46, 1.11, 1.05, 0.77, 1.19, 1.31, -1.89, -1.89, -1.91, -1.91, -1.72, -1.81, -2.09, -2.59, -2.19, -2.19, -1.94, -2.13, -2.1, -1.98, -2.04, -2.44, -3.24, -3.24, -3.24, -3.39, -3.6, -3.87, -5.24, -4.17, -3.13, -1.95, -1.95, -1.95, -1.95, -1.51, -2.39, -2.39, -1.83, -1.83, -2.12, 0, 0, 0, 0, -1.85, -0.84, 0, 0, 0, 0, 0, 0, 0] }
-    console.log(analysislog)
-    drawChart(analysislog.anno)
-    // analysislog = { move: [], anno: [], color: [], eval: [] }
-    // if (pgn == null) { pgn = get_moves().trim().split(" ") }
-    // // pgn = pgn.trim().split(" ")
-    // uciCmd("ucinewgame")
-    // evalres = -1
-    // analysislog.color.push("black")
-    // analysislog.anno.push(0)
-    // analysislog.eval.push(0)
-    // movebymoveanalyse(pgn, time)
+    analysislog = { move: [], anno: [], color: [], eval: [] }
+    if (pgn == null) { pgn = get_moves().trim().split(" ") }
+    // pgn = pgn.trim().split(" ")
+    uciCmd("ucinewgame")
+    evalres = -1
+    movebymoveanalyse(pgn, 200)
+
+    // analysislog =
+    //     { "move": [], "anno": [0, 20.07, 0.7, 0.3, 0.73, 1.55, 1.23, 1.17, 1.3699999999999999, 0.96, 0.56, 0.8400000000000001, 0.8899999999999999, 0.6699999999999999, 0.8600000000000001, 0.74, 0, -0.22000000000000003, -0.35000000000000003, -0.57, -0.52, -0.30000000000000004, -0.16000000000000003, -0.2, -0.62, -0.64, -0.13, -0.5900000000000001, -0.74, -0.15000000000000002, 0.38999999999999996, 0.94, 1.13, 1.44, 1.12, 0.5800000000000001, 0.47, 0.9, 1.1, 0.74, 1.8699999999999999, 2.17, 1.95, 2.19, 1.46, 1.26, 1.26, 1.4100000000000001, 1.42, 1.35, 1.01, -0.52, -1.84, -2.86, -3.76, -5.14, -5.1899999999999995, -4.300000000000001, -4.29, -4.08, -4.220000000000001, -4.55, -4.42, -4.95, -5.98, -7.1899999999999995, -7.1, -5.7, -5.68, -6.1, -6.26, -6.34, -6.51, -6.4, -6.4, -6.68, -6.68, -6.62, -6.66, -6.62, -6.73, -7.029999999999999, -7.39, -7.22, -7.029999999999999, -6.83, -6.68, -6.470000000000001, -6.41, -6.18, -5.9, -5.9, -5.95, -6.51, -6.15, -5.630000000000001, -2.99, -2.32, -0.19999999999999973, 5.65, 7.5, 7.95, 9.87], "color": ["black", "blue", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "black", "black", "black", "black", "black", "black", "black", "black", "black", "black", "black", "black", "black", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "grey", "black", "yellow", "yellow", "orange", "red", "red", "orange", "orange", "orange", "orange", "orange", "orange", "orange", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "red", "yellow", "yellow", "black", "blue", "blue", "blue", "blue"], "eval": [0, 0.06, 0.64, -0.34, 1.07, 0.48, 0.75, 0.42, 0.95, 0.01, 0.55, 0.29, 0.6, 0.07, 0.79, -0.05, 0.05, -0.27, -0.08, -0.49, -0.03, -0.27, 0.11, -0.31, -0.31, -0.33, 0.2, -0.79, 0.05, -0.2, 0.59, 0.35, 0.78, 0.66, 0.46, 0.12, 0.35, 0.55, 0.55, 0.19, 1.68, 0.49, 1.46, 0.73, 0.73, 0.53, 0.73, 0.68, 0.74, 0.61, 0.4, -0.92, -0.92, -1.94, -1.82, -3.32, -1.87, -2.43, -1.86, -2.22, -2, -2.55, -1.87, -3.08, -2.9, -4.29, -2.81, -2.89, -2.79, -3.31, -2.95, -3.39, -3.12, -3.28, -3.12, -3.56, -3.12, -3.5, -3.16, -3.46, -3.27, -3.76, -3.63, -3.59, -3.44, -3.39, -3.29, -3.18, -3.23, -2.95, -2.95, -2.95, -3, -3.51, -2.64, -2.99, 0, -2.32, 2.12, 3.53, 3.97, 3.98, 5.89] }
+    // drawChart(analysislog.eval)
+}
+
+function get_feedback(prev_eval, curr_eval) {
+    let diff = curr_eval - prev_eval
+    if (game.turn() == "w") diff = -diff
+    if (diff <= -5) {
+        return "blunder"
+    } else if (diff <= -3) {
+        return "mistake"
+    } else if (diff <= -1) {
+        return "inaccuracy"
+    } else if (diff >= 5) {
+        return "excellent"
+    } else if (diff >= 3) {
+        return "best"
+    } else if (diff >= 0) {
+        return "good"
+    }
+    return ""
 }
 
 function movebymoveanalyse(moves, time = 1000, count = 0) {
@@ -641,19 +776,20 @@ function movebymoveanalyse(moves, time = 1000, count = 0) {
             anno = "inaccuracy"
             plycolor = "yellow"
         } else if (diff >= 5) {
-            anno = "excellent move"
-            plycolor = "blue"
+            anno = "excellent"
+            plycolor = "green"
         } else if (diff >= 3) {
-            anno = "best move"
+            anno = "best"
             plycolor = "green"
         } else if (diff >= 0) {
-            anno = "good move"
-            plycolor = "grey"
+            anno = "good"
+            plycolor = "lightgreen"
         }
         if (plycolor != "black") $("#gameMove" + ply).css("color", plycolor)
+        if (anno != "") $("#gameMove" + ply).css('background-image', `url('move_feedbacks/${anno}.svg')`)
 
         analysislog.color.push(plycolor)
-        analysislog.anno.push(diff)
+        analysislog.anno.push(anno)
 
         preevalres = evalres
         if (evalres > 10) evalres = 10
@@ -668,16 +804,13 @@ function movebymoveanalyse(moves, time = 1000, count = 0) {
     }
     evalres = -1
     mov(count)
-    // uciCmd(`position startpos moves ${moves.slice(0,-1).join(" ").trim()}`);
-    // uciCmd(`go searchmoves ${moves[moves.length-1]} depth 15`) // movetime ${time-100}`)
-    // setTimeout(movebymoveanalyse, time, moves.slice(0, -1), time, count + 1);
     let startposmoves = moves.slice(0, count).join(" ").trim()
     if (startposmoves == "") {
         uciCmd(`position startpos`);
     } else {
-        uciCmd(`position startpos moves ${startposmoves}`);
+        uciCmd(`position startpos moves ${startposmoves} `);
     }
-    uciCmd(`go searchmoves ${moves[count]} movetime ${time - 100}`)
+    uciCmd(`go searchmoves ${moves[count]} movetime ${time - 100} `)
     setTimeout(movebymoveanalyse, time, moves, time, count + 1);
 }
 
@@ -685,7 +818,6 @@ function drawChart(moveeval) {
     var chart = new Chart('myChart', {
         // The type of chart we want to create
         type: 'line',
-
         // The data for our dataset
         data: {
             labels: Array.from({ length: moveeval.length }, (x, i) => i + 1),

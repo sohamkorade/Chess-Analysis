@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
 
 <head>
@@ -23,41 +24,55 @@
         <div class="row">
             <div class="col-7-md col-12">
                 <div class="row">
-                    <div class="col-1">
+                    <div class="col-1" id="evalbar">
                         <div id="evalbarB"></div>
                         <div id="evalbarW"></div>
-                        <span id="eval">0</span>
+                        <div id="eval" class="tag">0</div>
                     </div>
                     <div class="col-11">
                         <div id="board"></div>
                     </div>
+                    <div class="row">
+                        <button class="col" id="btnFlip">Flip</button>
+                        <button class="col" id="btnPaste">Paste FEN/PGN</button>
+                        <button class="col" id="btnAnalyze">Analyze</button>
+                        <button class="col" id="btnCopyFEN">Copy FEN</button>
+                        <button class="col" id="btnCopyPGN">Copy PGN</button>
+                        <button class="col" id="btnNewGame">New Game</button>
+                    </div>
                 </div>
             </div>
             <div class="col-5-md">
-                <!-- PGNVIEWER -->
-                <div class="navigation">
-                    <div id="board-buttons">
-                        <button id="btnStart"> |&lt; </button>
-                        <button id="btnPrevious"> &lt; </button>
-                        <button id="btnNext"> &gt; </button>
-                        <button id="btnEnd"> &gt;| </button>
-                        <hr>
-                        <button id="btnFlip" onclick="board.flip()">Flip</button>
-                        <button id="btnPaste">Paste Game</button>
-                        <button id="btnAnalyze">Analyze</button>
+                <div class="row">
+                    <div class="col-6">
+                        <label class="row"><input type="checkbox" id="chkEngine">Evaluation</label>
+                        <label class="row"><input type="checkbox" id="chkOverwrite">Overwrite</label>
+                        <label class="row"><input type="checkbox" id="chkPlayEngine">Play Engine</label>
                     </div>
+                    <div class="col-6">
+                        <label for="thinkTime">Think Time</label>
+                        <input type="number" id="thinkTime" name="thinkTime" min="1" max="10" value="3">
+                    </div>
+                </div>
+                <div>
                     <hr>
-                    <div id="game-data" style="max-height: 20%; overflow-y: scroll;">
+                    <div style="max-height: 40vh; overflow-y: scroll;">
+                        <div id="game-data"></div>
                         <table>
                             <tbody id="game-history">
                             </tbody>
                         </table>
+                        <div id="game-result"></div>
                     </div>
+                    <hr>
+                    <div class="row">
+                        <button class="col" id="btnStart"> |&lt; </button>
+                        <button class="col" id="btnPrevious"> &lt; </button>
+                        <button class="col" id="btnNext"> &gt; </button>
+                        <button class="col" id="btnEnd"> &gt;| </button>
+                    </div>
+                    <canvas id="myChart"></canvas>
                 </div>
-                <hr>
-                <div id="engineStatus">...</div>
-                <hr>
-                <canvas id="myChart"></canvas>
             </div>
         </div>
     </div>

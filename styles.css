@@ -59,11 +59,11 @@ body.dark {
 }
 
 .highlight-white {
-    box-shadow: inset 0 0 3px 3px yellow;
+    box-shadow: inset 0 0 2px 2px yellow;
 }
 
 .highlight-black {
-    box-shadow: inset 0 0 3px 3px blue;
+    box-shadow: inset 0 0 2px 2px blue;
 }
 
 .highlight {
@@ -71,15 +71,16 @@ body.dark {
     background-color: var(--bg-secondary-color);
 }
 
+
 #board {
     width: auto;
     margin: auto;
-    max-width: 800px;
+    max-width: 100vw;
     touch-action: none;
 }
 
 .piece-417db {
-    touch-action: auto;
+    touch-action: none;
     cursor: grab;
 }
 
@@ -87,12 +88,55 @@ body.dark {
     cursor: pointer;
 }
 
+[id^='gameMove']:hover {
+    background-color: darkgreen;
+}
+
+.ulta {
+    rotate: 180deg;
+}
+
+.square-55d63,
+[id^='gameMove'] {
+    /* background-image: url("move_feedbacks/blunder.svg"); */
+    background-repeat: no-repeat;
+    background-position-x: 70%;
+    background-position-y: center;
+    background-size: 10%;
+}
+
+[id^='gameEval'] {
+    color: grey;
+    text-align: right;
+    font-size: small;
+    float: right;
+    padding-right: 5px;
+}
+
+#game-history td {
+    padding: 4px;
+}
+
+#evalbar {
+    position: relative;
+}
+
 #evalbarB {
     height: 50%;
+    transition: height 0.5s ease-in-out;
     background-color: black;
 }
 
 #evalbarW {
     height: 50%;
+    transition: height 0.5s ease-in-out;
     background-color: white;
+}
+
+#eval {
+    left: -50%;
+    top: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    text-align: center;
+    position: absolute;
 }
