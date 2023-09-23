@@ -15,6 +15,10 @@
     --font-family-mono: monaco, "Consolas", "Lucida Console", monospace;
 }
 
+body{
+    user-select: none;
+}
+
 body.dark {
     --bg-color: #3F3F3F;
     --bg-secondary-color: black;
