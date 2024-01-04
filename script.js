@@ -46,9 +46,46 @@ var $board = $('#board')
 var squareClass = 'square-55d63'
 var overlayEl;
 
+function sohamengine_postMessage(cmd) {
+    fetch("https://web.iiit.ac.in/~soham.korade/sohamchess.php?" + cmd)
+        .then(e => e.text()).then(e => {
+            // get contents between <pre> and </pre>
+            let pre = e.match(/(?<=<pre>)(.*)(?=<\/pre>)/s)[0]
+            console.log(e)
+            // for each line
+            pre.split("\n").forEach(line => {
+                engine.onmessage(line)
+            })
+        })
+}
+
+function check_engines_status() {
+    fetch("https://web.iiit.ac.in/~soham.korade/sohamchess.php?isready")
+        .then(e => e.text()).then(e => {
+            // get contents between <pre> and </pre>
+            let pre = e.match(/(?<=<pre>)(.*)(?=<\/pre>)/s)[0]
+            if (pre.match(/readyok/)) {
+                console.log("SohamChess is ready")
+                $("#sel-sohamchess").prop("disabled", false)
+                $("#sel-sohamchess").text("SohamChess")
+            }
+        })
+
+    fetch("https://stockfish.online/api/stockfish.php?fen=r2q1rk1/ppp2ppp/3bbn2/3p4/8/1B1P4/PPP2PPP/RNB1QRK1%20w%20-%20-%205%2011&depth=1&mode=bestmove")
+        .then(e => e.json()).then(e => {
+            if (e.success) {
+                console.log("Stockfish.online is ready")
+                $("#sel-stockfishonline").prop("disabled", false)
+                // set parent label
+                // $("label #sel-stockfishonline").text("Stockfish")
+            }
+        })
+}
+
 function uciCmd(cmd) {
     // console.log("UCI: " + cmd);
-    engine.postMessage(cmd);
+    engine.postMessage(cmd)
+    // sohamengine_postMessage(cmd)
 }
 
 function displayStatus() {
@@ -102,12 +139,13 @@ function runEngine() {
     uciCmd('stop')
     if (currEnginePly) return
     if (optionEvaluation || optionPlayEngine) {
-        uciCmd('position startpos moves' + get_moves());
-        // uciCmd("go infinite");
+        // uciCmd('position startpos moves' + get_moves());
+        // // uciCmd("go infinite");
+        // uciCmd("go movetime " + thinkingTime);
+        uciCmd(`go movetime ${thinkingTime} startpos moves ${get_moves()}`)
         currEnginePly = currPly;
         console.log("evaluating for", currEnginePly)
         evalHistory[currEnginePly] = 0
-        uciCmd("go movetime " + thinkingTime);
         engineStatus.running = true;
     }
 }

@@ -18,8 +18,16 @@
 <body class="dark">
     <div class="container">
         <div class="row">
-            <div class="col-12">
+            <div class="col-4">
                 <h1>Soham Chess Analysis</h1>
+            </div>
+            <div class="col-8">
+                <fieldset>
+                    <legend>Engine</legend>
+                    <label><input type="radio" name="engine" value="stockfishjs" id="sel-stockfishjs" checked>Stockfish.js</label>
+                    <label><input type="radio" name="engine" value="stockfishonline" id="sel-stockfishonline" disabled>Stockfish (offline)</label>
+                    <label><input type="radio" name="engine" value="sohamchess" id="sel-sohamchess" disabled>Soham Chess (offline)</label>
+                </fieldset>
             </div>
         </div>
         <div class="row">
